@@ -39,18 +39,21 @@ journeys_all <- member_engagement_fiscal %>%
   summarise(Freq = n()) %>%
   ungroup() %>%
   
-  # 'Left' == (Junior Engaged to Int,Sen == 'Never Attended')
-  within(I[I=="Never Attended" & S == "Never Attended"] <- 'Left') %>%
-  within(S[S=="Never Attended"] <- 'Left') %>%
+  # Remove 'Not Old Enough' Juniors
+  filter(J != 'Not Old Enough') %>%
   
   # 'Not Old Enough' Intermediates, should be same for Senior
   within(S[I=="Not Old Enough"] <- 'Not Old Enough') %>%
   
-  # Remove 'Not Old Enough' Juniors
-  filter(J != 'Not Old Enough') %>%
+  # 'Left' == (Junior Engaged to Int,Sen == 'Never Attended')
+  within(I[I=="Never Attended" & S=="Never Attended"] <- "Left") %>%
+  within(S[S=="Never Attended"] <- 'Left') %>%
   
-  # 'Skipped' == (Junior, Senior Engaged but Int 'Never Attended')
-  within(I[I=="Never Attended" & J != 'Never Attended' & S != 'Never Attended'] <- 'Skip Int.')
+  # Break apart 'New Members' and label inactive to active as 'Active'
+  within(I[I=="Never Attended"] <- 'Inactive') %>%
+  within(J[J=="Never Attended"] <- 'New Member') %>%
+  within(I[J=="New Member" & I=="Inactive"] <- 'New Member') %>%
+  within(I[I=="Inactive"] <- 'Active')
 
 #
 ## Count: Junior to Intermediate Journeys
@@ -65,24 +68,17 @@ journeys_J_I <- journeys_all %>%
   ungroup() %>%
   
   # Remove non-Juniors,Intermediates
-  filter(J != "Never Attended" | I != "Never Attended") %>%
-  
-  # Assign "Never Attended" Juniors to "Skip Jun."
-  within(J[J=="Never Attended"] <- "Skip Jun.") %>%
+  filter(J != "New Member" | I != "New Member") %>%
   
   # Convert Junior cateories to numbers
-  within(J[J=="A. Ideal (2+)"] <- 0) %>%
-  within(J[J=="B. Moderate (0.5-2)"] <- 1) %>%
-  within(J[J=="C. Low (< 0.5)"] <- 2) %>%
-  within(J[J=="Skip Jun."] <- 12) %>%
+  within(J[J=="Active"] <- 0) %>%
+  within(J[J=="New Member"] <- 1) %>%
   
   # Convert Intermediate categories to numbers
-  within(I[I=="A. Ideal (2+)"] <- 3) %>%
-  within(I[I=="B. Moderate (0.5-2)"] <- 4) %>%
-  within(I[I=="C. Low (< 0.5)"] <- 5) %>%
-  within(I[I=="Not Old Enough"] <- 6) %>%
-  within(I[I=="Left"] <- 10) %>%
-  within(I[I=="Skip Int."] <- 11)
+  within(I[I=="Active"] <- 2) %>%
+  within(I[I=="Left"] <- 3) %>%
+  within(I[I=="Not Old Enough"] <- 4) %>%
+  within(I[I=="New Member"] <- 1)
 ##
 #
 
@@ -99,23 +95,17 @@ journeys_I_S <- journeys_all %>%
   ungroup() %>%
   
   # Remove unchanged categories
-  filter(I != 'Not Old Enough' | S != 'Not Old Enough') %>%
   filter(I != 'Left' | S != 'Left') %>%
-  
-  # Assign "Never Attended" Intermediate to "Skip Int."
-  within(I[I=="Never Attended"] <- "Skip Int.") %>%
 
-  within(I[I=="A. Ideal (2+)"] <- 3) %>%
-  within(I[I=="B. Moderate (0.5-2)"] <- 4) %>%
-  within(I[I=="C. Low (< 0.5)"] <- 5) %>%
-  within(I[I=="Not Old Enough"] <- 6) %>%
-  within(I[I=="Skip Int."] <- 11) %>%
+  # Convert Intermediate categories to numbers
+  within(I[I=="Active"] <- 2) %>%
+  within(I[I=="New Member"] <- 1) %>%
+  within(I[I=="Not Old Enough"] <- 4) %>%
   
-  within(S[S=="A. Ideal (2+)"] <- 7) %>%
-  within(S[S=="B. Moderate (0.5-2)"] <- 8) %>%
-  within(S[S=="C. Low (< 0.5)"] <- 9) %>%
-  within(S[S=="Not Old Enough"] <- 6) %>%
-  within(S[S=='Left'] <- 10)
+  # Convert Senior(Sen.) categories to numbers
+  within(S[S=="Active"] <- 5) %>%
+  within(S[S=="Left"] <- 3) %>%
+  within(S[S=="Not Old Enough"] <- 6)
 ##
 #
 
@@ -143,19 +133,13 @@ library(networkD3)
 
 # Create your nodes
 nodes = data.frame("name" = 
-                     c("Ideal Jun.", # Node 0
-                       "Moderate Jun.", # Node 1
-                       "Low Jun.", # Node 2
-                       "Ideal Int", # Node 3
-                       "Moderate Int",  # Node 4
-                       "Low Int",  # Node 5
-                       "Not Old Enough",  # Node 6
-                       "Ideal Sen", # Node 7
-                       "Moderate Sen",  # Node 8
-                       "Low Sen",  # Node 9
-                       "Left", # Node 10
-                       "Skip Int.",  # Node 11
-                       "Skip Jun." # Node 12
+                     c("Junior", # Node 0
+                       "New Member", # Node 1
+                       "Intermediate", # Node 2
+                       "Left",  # Node 3
+                       "Not Old Enough",  # Node 4
+                       "Senior", # Node 5
+                       "Not Old Enough"  # Node 6
                        ))
 
 # Plot
@@ -166,6 +150,7 @@ sankeyNetwork(Links = sankey_data,
               Value = "value",
               NodeID = "name",
               fontSize= 18,
-              nodeWidth = 30)
+              nodeWidth = 30,
+              units = 'Member')
 ##
 #

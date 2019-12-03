@@ -1,4 +1,4 @@
-# Step 02 Prep Engagement Fiscal
+# Step 02 Prep Engagement Fiscal Simplified
 # Author: Andrew Macumber
 # Pre-requisites: Step 01
 
@@ -68,10 +68,8 @@ member_engagement_fiscal <- member_engagement_fiscal %>%
   
   # Create dim: Eng_Level based on checkin_avg_age
   mutate(
-    Eng_Level = ifelse(checkin_avg_age >= 2, "A. Ideal (2+)", 
-                       ifelse(checkin_avg_age >= 0.5, "B. Moderate (0.5-2)",
-                              ifelse(checkin_avg_age > 0, "C. Low (< 0.5)",
-                                     "D. None (0)")))) %>%
+    Eng_Level = ifelse(checkin_avg_age > 0, "Active",
+                                     "Not")) %>%
   
   # Select dim of interest
   select(-checkin_avg_age)
